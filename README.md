@@ -1,6 +1,4 @@
-================================================================================
-PANDUAN DEPLOYMENT BACKEND PHP (METODE GITHUB)
-================================================================================
+PANDUAN DEPLOYMENT BACKEND PHP (SHARED HOSTING/VPS/DEDICATED SUPPORT)
 
 Backend QiosLink kini telah dipisahkan agar lebih mudah dikelola.
 Repository Sumber: https://github.com/nabhan-rp/qioslink-php
