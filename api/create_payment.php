@@ -1,12 +1,11 @@
 <?php
 // =============================================================================
-// FILE: api/create_payment.php (VERSI ANTI DUPLIKAT)
+// FILE: api/create_payment.php (VERSI KODE UNIK OTOMATIS)
 // =============================================================================
 
 require 'db_connect.php';
 require 'qris_utils.php';
 
-// Header JSON
 header('Content-Type: application/json');
 
 $input = json_decode(file_get_contents("php://input"), true);
@@ -14,62 +13,78 @@ $input = json_decode(file_get_contents("php://input"), true);
 if(isset($input['merchant_id']) && isset($input['amount'])) {
     
     $merchant_id = $input['merchant_id'];
-    $amount = (int)$input['amount'];
+    $base_amount = (int)$input['amount']; // Nominal Asli
     $description = isset($input['description']) ? $input['description'] : 'Payment';
     $expiry_minutes = isset($input['expiry_minutes']) ? (int)$input['expiry_minutes'] : 0;
     $single_use = isset($input['single_use']) && $input['single_use'] ? 1 : 0;
     
-    // Parameter Tambahan untuk Integrasi (WHMCS/WooCommerce)
+    // Parameter Integrasi
     $external_id = isset($input['external_id']) ? $input['external_id'] : null;
     $callback_url = isset($input['callback_url']) ? $input['callback_url'] : null;
     
     // --------------------------------------------------------------------------
-    // 1. CEK DUPLIKAT (IDEMPOTENCY CHECK)
+    // 1. LOGIKA KODE UNIK (ANTI BENTROK)
     // --------------------------------------------------------------------------
-    // Jika ada external_id (Invoice ID), cek apakah sudah ada transaksi PENDING
-    // dengan nominal yang sama. Jika ada, jangan buat baru, tapi kembalikan yang lama.
+    // Kita akan mencari angka acak (1-999) agar nominal akhir (Base + Unik)
+    // belum pernah ada di status 'pending'.
     
-    if (!empty($external_id)) {
-        $checkSql = "SELECT trx_id, qr_string, payment_url, amount 
-                     FROM transactions 
-                     WHERE merchant_id = ? 
-                     AND external_ref_id = ? 
-                     AND status = 'pending' 
-                     AND amount = ? 
-                     ORDER BY id DESC LIMIT 1";
-                     
-        $stmtCheck = $conn->prepare($checkSql);
-        $stmtCheck->bind_param("isi", $merchant_id, $external_id, $amount);
-        $stmtCheck->execute();
-        $resCheck = $stmtCheck->get_result();
-        
-        if ($resCheck->num_rows > 0) {
-            $existing = $resCheck->fetch_assoc();
-            
-            // Update Callback URL jika berubah (opsional, jaga-jaga user ganti domain)
-            if ($callback_url) {
-                $updCb = $conn->prepare("UPDATE transactions SET external_callback_url = ? WHERE trx_id = ?");
-                $updCb->bind_param("ss", $callback_url, $existing['trx_id']);
-                $updCb->execute();
-            }
+    $final_amount = $base_amount;
+    $is_unique_found = false;
+    $max_retries = 20; // Coba 20x cari angka
+    $attempt = 0;
 
+    // Jika ini request dari WHMCS (ada external_id), kita cek dulu
+    // apakah invoice ini SUDAH punya transaksi pending sebelumnya?
+    // Jika ya, gunakan nominal yang sama biar kode uniknya tidak berubah-ubah saat refresh.
+    if (!empty($external_id)) {
+        $cekExisting = $conn->prepare("SELECT amount, trx_id, qr_string, payment_url FROM transactions WHERE merchant_id = ? AND external_ref_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1");
+        $cekExisting->bind_param("is", $merchant_id, $external_id);
+        $cekExisting->execute();
+        $resExisting = $cekExisting->get_result();
+        
+        if ($resExisting->num_rows > 0) {
+            // Sudah ada, kembalikan data lama
+            $data = $resExisting->fetch_assoc();
             echo json_encode([
                 "success" => true,
-                "trx_id" => $existing['trx_id'],
-                "qr_string" => $existing['qr_string'],
-                "payment_url" => $existing['payment_url'],
-                "amount" => $existing['amount'],
-                "is_existing" => true // Penanda bahwa ini data lama
+                "trx_id" => $data['trx_id'],
+                "qr_string" => $data['qr_string'],
+                "payment_url" => $data['payment_url'],
+                "amount" => (int)$data['amount'], // Ini sudah termasuk kode unik lama
+                "is_existing" => true
             ]);
-            exit; // STOP DISINI, JANGAN BUAT BARU
+            exit;
         }
     }
 
+    // Jika belum ada, cari kode unik baru
+    while (!$is_unique_found && $attempt < $max_retries) {
+        // Generate angka unik 1 - 750 (agar tidak terlalu mahal, tapi cukup acak)
+        // Jika amount 0 (misal testing), jangan tambah kode unik
+        $unique_code = ($base_amount > 0) ? rand(1, 750) : 0;
+        $candidate_amount = $base_amount + $unique_code;
+        
+        // Cek apakah ada transaksi PENDING dengan nominal ini?
+        $cekSql = "SELECT id FROM transactions WHERE amount = $candidate_amount AND status = 'pending'";
+        $cekRes = $conn->query($cekSql);
+        
+        if ($cekRes->num_rows == 0) {
+            // Aman! Nominal ini belum dipakai orang lain
+            $final_amount = $candidate_amount;
+            $is_unique_found = true;
+        }
+        $attempt++;
+    }
+
+    if (!$is_unique_found) {
+        echo json_encode(["success" => false, "message" => "Server Busy: Cannot generate unique amount. Please try again."]);
+        exit;
+    }
+
     // --------------------------------------------------------------------------
-    // 2. BUAT TRANSAKSI BARU (Jika belum ada)
+    // 2. PROSES SIMPAN TRANSAKSI
     // --------------------------------------------------------------------------
     
-    // Ambil Config Merchant
     $stmt = $conn->prepare("SELECT merchant_config FROM users WHERE id = ?");
     $stmt->bind_param("i", $merchant_id);
     $stmt->execute();
@@ -84,34 +99,28 @@ if(isset($input['merchant_id']) && isset($input['amount'])) {
             exit;
         }
 
-        // Generate QR Dinamis
-        $dynamicQR = generateDynamicQR($config['qrisString'], $amount);
+        // Generate QR dengan nominal FINAL (Base + Kode Unik)
+        $dynamicQR = generateDynamicQR($config['qrisString'], $final_amount);
         
-        // Generate ID & Token
         $trx_id = "TRX-" . date("ymd") . rand(1000,9999);
         $payment_token = bin2hex(random_bytes(16));
         
-        // URL Pembayaran
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-        $domain_url = $protocol . "://" . $_SERVER['HTTP_HOST'];
-        // Hapus /api jika script dijalankan dari dalam folder api
-        $domain_url = str_replace('/api', '', $domain_url); 
+        $domain_url = str_replace('/api', '', $protocol . "://" . $_SERVER['HTTP_HOST']);
         $payment_url = $domain_url . "/?pay=" . $payment_token; 
         
-        // Expiry
         $expires_at = null;
         if ($expiry_minutes > 0) {
             $expires_at = date('Y-m-d H:i:s', strtotime("+$expiry_minutes minutes"));
         }
 
-        // Simpan ke Database (LENGKAP DENGAN EXTERNAL REF)
         $sql = "INSERT INTO transactions 
                 (trx_id, merchant_id, amount, description, status, qr_string, payment_token, payment_url, expires_at, is_single_use, external_ref_id, external_callback_url) 
                 VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?)";
                 
         $insert = $conn->prepare($sql);
-        // s=string, i=integer. Urutan: trx_id(s), merch(i), amt(i), desc(s), qr(s), tok(s), url(s), exp(s), single(i), ext_id(s), ext_cb(s)
-        $insert->bind_param("siisssssiss", $trx_id, $merchant_id, $amount, $description, $dynamicQR, $payment_token, $payment_url, $expires_at, $single_use, $external_id, $callback_url);
+        // Perhatikan: kita bind $final_amount, bukan $base_amount
+        $insert->bind_param("siisssssiss", $trx_id, $merchant_id, $final_amount, $description, $dynamicQR, $payment_token, $payment_url, $expires_at, $single_use, $external_id, $callback_url);
         
         if ($insert->execute()) {
             echo json_encode([
@@ -119,8 +128,8 @@ if(isset($input['merchant_id']) && isset($input['amount'])) {
                 "trx_id" => $trx_id,
                 "qr_string" => $dynamicQR,
                 "payment_url" => $payment_url,
-                "amount" => $amount,
-                "is_existing" => false
+                "amount" => $final_amount, // Return nominal yang sudah ada kode uniknya
+                "original_amount" => $base_amount
             ]);
         } else {
             echo json_encode(["success" => false, "message" => "Database Error: " . $conn->error]);
