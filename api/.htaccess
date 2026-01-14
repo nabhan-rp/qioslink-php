@@ -1,0 +1,23 @@
+
+# PROTECT API FOLDER
+# Rename this file to .htaccess and place it inside the /api/ folder
+
+# Prevent directory listing (Forbidden API)
+Options -Indexes
+
+# Allow access to PHP files
+<Files *.php>
+    Order Allow,Deny
+    Allow from all
+</Files>
+
+# Deny direct access to internal logic files if necessary (Optional)
+<Files db_connect.php>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+<Files qris_utils.php>
+    Order Allow,Deny
+    Deny from all
+</Files>

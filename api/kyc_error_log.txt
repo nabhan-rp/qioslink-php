@@ -1,0 +1,1 @@
+2026-01-13 20:31:02 - Error: {"detail": "You must be authenticated with a valid access token to access this endpoint."}

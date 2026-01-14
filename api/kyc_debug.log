@@ -1,0 +1,37 @@
+2026-01-13 22:24:57 - Request received
+2026-01-13 22:24:57 - Sending to Didit: {"callback_url":"https:\/\/bayar.jajanan.online\/api\/kyc_callback.php","vendor_data":"1","metadata":{"internal_user_id":"1"},"features":["document","face"],"app_id":"0dd93d13-2948-487a-8340-502f5f2a9ee6"}
+2026-01-13 22:24:58 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-13 22:48:14 - Request received
+2026-01-13 22:48:14 - Sending to Didit: {"callback_url":"https:\/\/bayar.jajanan.online\/api\/kyc_callback.php","vendor_data":"1","metadata":{"internal_user_id":"1"},"features":["document","face"],"app_id":"0dd93d13-2948-487a-8340-502f5f2a9ee6"}
+2026-01-13 22:48:15 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-13 23:21:53 - --- NEW SESSION REQUEST ---
+2026-01-13 23:21:53 - Config Loaded. API Key Length: 43
+2026-01-13 23:21:53 - Sending to Didit: {"callback_url":"https:\/\/bayar.jajanan.online\/api\/kyc_callback.php","vendor_data":"1","metadata":{"internal_user_id":"1"},"features":["document","face"],"app_id":"0dd93d13-2948-487a-8340-502f5f2a9ee6"}
+2026-01-13 23:21:53 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 00:03:25 - --- NEW SESSION REQUEST ---
+2026-01-14 00:03:25 - Config Loaded. API Key Length: 43
+2026-01-14 00:03:25 - Sending to Didit...
+2026-01-14 00:03:26 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 00:26:47 - --- NEW SESSION REQUEST ---
+2026-01-14 00:26:47 - Config Loaded. API Key Length: 43 | First 5 chars: hQQLw
+2026-01-14 00:26:47 - Sending to Didit...
+2026-01-14 00:26:48 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 00:27:20 - --- NEW SESSION REQUEST ---
+2026-01-14 00:27:20 - Config Loaded. API Key Length: 43 | First 5 chars: hQQLw
+2026-01-14 00:27:20 - Sending to Didit...
+2026-01-14 00:27:21 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 00:45:50 - --- NEW SESSION REQUEST ---
+2026-01-14 00:45:50 - Config Loaded. API Key Length: 43 | First 5 chars: hQQLw
+2026-01-14 00:45:50 - Sending to Didit...
+2026-01-14 00:45:50 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 01:27:05 - --- NEW SESSION REQUEST (V2 Fix) ---
+2026-01-14 01:27:05 - Sending to Didit V2...
+2026-01-14 01:27:06 - Response (400): {"workflow_id":["This field is required."]}
+2026-01-14 06:48:30 - --- NEW SESSION REQUEST ---
+2026-01-14 06:48:30 - Config Loaded. Workflow ID: 814762c4-6874-4de4-9ab0-947cb7104a6c
+2026-01-14 06:48:30 - Sending to Didit...
+2026-01-14 06:48:31 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
+2026-01-14 06:51:00 - --- NEW SESSION REQUEST ---
+2026-01-14 06:51:00 - Config Loaded. Workflow ID: 814762c4-6874-4de4-9ab0-947cb7104a6c
+2026-01-14 06:51:00 - Sending to Didit...
+2026-01-14 06:51:01 - Response (401): {"detail": "You must be authenticated with a valid access token to access this endpoint."}
